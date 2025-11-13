@@ -1,0 +1,14 @@
+{
+  "name": "sql-script-tools",
+  "version": "1.0.0",
+  "description": "这是一个将MySQL建表脚本转换为JSON数据并提供可视化界面查看表结构的工具。",
+  "main": "make-docs.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "docx": "^9.5.1"
+  }
+}
