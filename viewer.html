@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据库表结构查看器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 头部信息 */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header .info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* 左侧表列表 */
+        .sidebar {
+            width: 350px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            margin-top: 100px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        }
+
+        .search-box {
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            z-index: 10;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .table-list {
+            padding: 10px;
+        }
+
+        .table-item {
+            padding: 12px 15px;
+            margin: 5px 0;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .table-item:hover {
+            background: #f8f9ff;
+            border-left-color: #667eea;
+            transform: translateX(3px);
+        }
+
+        .table-item.active {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-left-color: #667eea;
+            font-weight: bold;
+        }
+
+        .table-item .table-name {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .table-item .table-comment {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* 右侧内容区 */
+        .content {
+            flex: 1;
+            padding: 120px 30px 30px 30px;
+            overflow-y: auto;
+        }
+
+        .table-info {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .table-info h2 {
+            font-size: 22px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .table-info .meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        /* 表格样式 */
+        .fields-table-wrapper {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        thead th {
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        thead th:first-child {
+            border-radius: 8px 0 0 0;
+        }
+
+        thead th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f8f9ff;
+        }
+
+        tbody td {
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .badge-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .badge-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .badge-gray {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+            }
+
+            .content {
+                padding: 120px 15px 15px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 数据库表结构查看器</h1>
+        <div class="info">
+            <span id="dbName">当前数据库: -</span> |
+            <span id="tableCount">表数量: 0</span> |
+            <span id="totalInfo">共0个数据库，0张表</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 左侧表列表 -->
+        <div class="sidebar">
+            <div class="search-box">
+                <select id="dbSelect" style="width: 100%; padding: 10px 15px; margin-bottom: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 14px; background: white; cursor: pointer;">
+                    <option value="">选择数据库...</option>
+                </select>
+                <input type="text" id="searchInput" placeholder="🔍 搜索表名或注释...">
+            </div>
+            <div class="table-list" id="tableList">
+                <!-- 表列表将在这里动态生成 -->
+            </div>
+        </div>
+
+        <!-- 右侧内容区 -->
+        <div class="content" id="content">
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p>请从左侧选择一个表查看详细信息</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = null;
+        let currentDatabase = null;
+        let filteredTables = [];
+
+        // 加载JSON数据
+        async function loadData() {
+            try {
+                const response = await fetch('output.json');
+                allData = await response.json();
+
+                // 更新头部信息
+                document.getElementById('totalInfo').textContent =
+                    `共${allData.totalDatabases}个数据库，${allData.totalTables}张表`;
+
+                // 填充数据库下拉列表
+                const dbSelect = document.getElementById('dbSelect');
+                allData.databases.forEach((db, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${db.database} (${db.tables.length}张表)`;
+                    dbSelect.appendChild(option);
+                });
+
+                // 默认选择第一个数据库
+                if (allData.databases.length > 0) {
+                    dbSelect.value = 0;
+                    selectDatabase(0);
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                alert('加载数据失败，请确保 output.json 文件存在');
+            }
+        }
+
+        // 选择数据库
+        function selectDatabase(index) {
+            currentDatabase = allData.databases[index];
+
+            // 更新头部信息
+            document.getElementById('dbName').textContent = `当前数据库: ${currentDatabase.database}`;
+            document.getElementById('tableCount').textContent = `表数量: ${currentDatabase.tables.length}`;
+
+            // 重置搜索框
+            document.getElementById('searchInput').value = '';
+
+            filteredTables = currentDatabase.tables;
+            renderTableList();
+
+            // 清空右侧内容
+            document.getElementById('content').innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p>请从左侧选择一个表查看详细信息</p>
+                </div>
+            `;
+        }
+
+        // 渲染表列表
+        function renderTableList() {
+            const tableListEl = document.getElementById('tableList');
+            tableListEl.innerHTML = '';
+
+            if (filteredTables.length === 0) {
+                tableListEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">未找到匹配的表</div>';
+                return;
+            }
+
+            filteredTables.forEach((table, index) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'table-item';
+                itemEl.innerHTML = `
+                    <div class="table-name">${table.tableName}</div>
+                    <div class="table-comment">${table.comment || '无注释'}</div>
+                `;
+                itemEl.onclick = () => showTableDetail(table, itemEl);
+                tableListEl.appendChild(itemEl);
+            });
+        }
+
+        // 显示表详情
+        function showTableDetail(table, itemEl) {
+            // 更新选中状态
+            document.querySelectorAll('.table-item').forEach(el => el.classList.remove('active'));
+            itemEl.classList.add('active');
+
+            // 渲染表详情
+            const contentEl = document.getElementById('content');
+
+            let html = `
+                <div class="table-info">
+                    <h2>${table.tableName}</h2>
+                    <div class="meta">表注释: ${table.comment || '无注释'}</div>
+                    <div class="meta">字段数量: ${table.columns.length}</div>
+                </div>
+
+                <div class="fields-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>属性名</th>
+                                <th>字段类型</th>
+                                <th>可空状态</th>
+                                <th>主键</th>
+                                <th>说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            table.columns.forEach(column => {
+                const nullableText = column.nullable ?
+                    '<span class="badge badge-success">可空</span>' :
+                    '<span class="badge badge-danger">不可空</span>';
+
+                const primaryKeyText = column.isPrimaryKey ?
+                    '<span class="badge badge-primary">主键</span>' :
+                    '<span class="badge badge-gray">-</span>';
+
+                html += `
+                    <tr>
+                        <td><strong>${column.name}</strong></td>
+                        <td><code>${column.type}</code></td>
+                        <td>${nullableText}</td>
+                        <td>${primaryKeyText}</td>
+                        <td>${column.comment || '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            contentEl.innerHTML = html;
+        }
+
+        // 数据库选择事件
+        document.getElementById('dbSelect').addEventListener('change', (e) => {
+            const index = parseInt(e.target.value);
+            if (!isNaN(index)) {
+                selectDatabase(index);
+            }
+        });
+
+        // 搜索功能
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const keyword = e.target.value.toLowerCase();
+
+            if (!currentDatabase) return;
+
+            if (!keyword) {
+                filteredTables = currentDatabase.tables;
+            } else {
+                filteredTables = currentDatabase.tables.filter(table =>
+                    table.tableName.toLowerCase().includes(keyword) ||
+                    (table.comment && table.comment.toLowerCase().includes(keyword))
+                );
+            }
+
+            renderTableList();
+        });
+
+        // 页面加载时初始化
+        window.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
